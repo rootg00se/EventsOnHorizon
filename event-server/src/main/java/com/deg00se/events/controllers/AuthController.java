@@ -6,14 +6,17 @@ import com.deg00se.events.domain.dtos.RegisterRequest;
 import com.deg00se.events.domain.dtos.TokenResponse;
 import com.deg00se.events.services.AuthService;
 import com.deg00se.events.services.TokenService;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.net.URI;
 
 @RestController
 @RequestMapping("/auth")
@@ -22,17 +25,14 @@ public class AuthController {
     private final AuthService authService;
     private final TokenService tokenService;
 
+    @Value("${client.url}")
+    private String clientOrigin;
+
     @PostMapping("register")
-    public ResponseEntity<TokenResponse> register(
-            HttpServletResponse response,
-            @RequestBody @Valid RegisterRequest registerRequest
-    ) {
-        AuthResult authResult = authService.register(registerRequest.email(), registerRequest.password());
-        TokenResponse tokenResponse = new TokenResponse(authResult.accessToken(), authResult.accessExpiresIn());
+    public ResponseEntity<Void> register(@RequestBody @Valid RegisterRequest registerRequest) {
+        authService.register(registerRequest.email(), registerRequest.password());
 
-        addRefreshTokenToCookie(response, authResult.refreshToken());
-
-        return ResponseEntity.ok(tokenResponse);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("login")
@@ -80,6 +80,13 @@ public class AuthController {
         return ResponseEntity.ok(tokenResponse);
     }
 
+    @GetMapping("activate/{link}")
+    public ResponseEntity<Void> activateEmail(@PathVariable String link) {
+        authService.activateEmail(link);
+
+        return ResponseEntity.status(HttpStatus.FOUND).location(URI.create(clientOrigin)).build();
+    }
+
     private void addRefreshTokenToCookie(HttpServletResponse response, String refreshToken) {
         ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken)
                 .httpOnly(true)
@@ -90,8 +97,4 @@ public class AuthController {
 
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
-
-/*
-    @GetMapping("activate/{link}")
-    public ResponseEntity<?> register() {}*/
 }

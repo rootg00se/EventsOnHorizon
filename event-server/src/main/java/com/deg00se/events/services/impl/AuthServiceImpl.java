@@ -6,10 +6,12 @@ import com.deg00se.events.domain.entities.RefreshToken;
 import com.deg00se.events.domain.entities.User;
 import com.deg00se.events.repositories.UserRepository;
 import com.deg00se.events.services.AuthService;
+import com.deg00se.events.services.MailService;
 import com.deg00se.events.services.TokenService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -17,6 +19,9 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.security.SecureRandom;
+import java.util.Base64;
 
 @Service
 @RequiredArgsConstructor
@@ -27,22 +32,32 @@ public class AuthServiceImpl implements AuthService {
     private final AuthenticationManager authenticationManager;
     private final TokenService tokenService;
     private final JwtConfig jwtConfig;
+    private final MailService mailService;
+    private final SecureRandom secureRandom;
+
+    private final Base64.Encoder baseEncoder = Base64.getUrlEncoder().withoutPadding();
+
+    @Value("${application.url}")
+    private String applicationUrl;
 
     @Override
     @Transactional
-    public AuthResult register(String email, String password) {
+    public void register(String email, String password) {
         if (userRepository.existsByEmail(email)) {
             throw new IllegalArgumentException("User with that email already exists");
         }
 
+        String link = generateLink(32);
+        String activationLink = String.format("%s/auth/activate/%s", applicationUrl, link);
+
         User user = User.builder()
                 .email(email)
+                .activationLink(link)
                 .passwordHash(passwordEncoder.encode(password))
                 .build();
 
         userRepository.save(user);
-
-        return authenticate(user, password);
+        mailService.sendConfirmationMail(email, activationLink);
     }
 
     @Override
@@ -77,6 +92,17 @@ public class AuthServiceImpl implements AuthService {
         return new AuthResult(accessToken, newRefreshToken, jwtConfig.getAccessExpiration());
     }
 
+    @Override
+    @Transactional
+    public void activateEmail(String link) {
+        User user = userRepository.findByActivationLink(link)
+                .orElseThrow(() -> new EntityNotFoundException(("User was not found")));
+
+        user.setIsActivated(true);
+
+        userRepository.save(user);
+    }
+
     private AuthResult authenticate(User user, String rawPassword) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(user.getEmail(), rawPassword)
@@ -88,5 +114,12 @@ public class AuthServiceImpl implements AuthService {
         tokenService.saveRefreshToken(refreshToken, user);
 
         return new AuthResult(accessToken, refreshToken, jwtConfig.getAccessExpiration());
+    }
+
+    private String generateLink(int byteLength) {
+        byte[] randomBytes = new byte[byteLength];
+        secureRandom.nextBytes(randomBytes);
+
+        return baseEncoder.encodeToString(randomBytes);
     }
 }

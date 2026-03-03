@@ -31,8 +31,8 @@ public class EventUserDetails implements UserDetails {
         return user.getEmail();
     }
 
-//    @Override
-//    public boolean isEnabled() {
-//        return user.getIsActivated();
-//    }
+    @Override
+    public boolean isEnabled() {
+        return user.getIsActivated();
+    }
 }
