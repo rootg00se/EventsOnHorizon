@@ -1,5 +1,6 @@
 package com.deg00se.events.services;
 
+import com.deg00se.events.domain.entities.RefreshToken;
 import com.deg00se.events.domain.entities.User;
 import org.springframework.security.core.userdetails.UserDetails;
 
@@ -8,4 +9,7 @@ public interface TokenService {
     String generateRefreshToken(UserDetails userDetails);
     void saveRefreshToken(String token, User user);
     UserDetails validateAccessToken(String token);
+    UserDetails validateRefreshToken(String token);
+    void deleteRefreshToken(String token);
+    RefreshToken findToken(String token);
 }

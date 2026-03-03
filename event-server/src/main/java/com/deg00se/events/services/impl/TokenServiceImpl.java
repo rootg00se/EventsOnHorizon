@@ -8,10 +8,12 @@ import com.deg00se.events.services.TokenService;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
@@ -43,19 +45,45 @@ public class TokenServiceImpl implements TokenService {
     }
 
     @Override
+    @Transactional
     public void saveRefreshToken(String token, User user) {
-        RefreshToken refreshToken = RefreshToken.builder()
-                .token(token)
-                .user(user)
-                .build();
+        RefreshToken refreshToken = refreshTokenRepository.findByUser(user)
+                .orElseGet(() -> RefreshToken.builder().user(user).build());
+
+        refreshToken.setToken(token);
 
         refreshTokenRepository.save(refreshToken);
     }
 
     @Override
     public UserDetails validateAccessToken(String token) {
+        return validateToken(token, jwtConfig.getAccessSecret());
+    }
+
+    @Override
+    public UserDetails validateRefreshToken(String token) {
+        return validateToken(token, jwtConfig.getRefreshSecret());
+    }
+
+    @Override
+    @Transactional
+    public void deleteRefreshToken(String token) {
+        if (!refreshTokenRepository.existsByToken(token)) {
+            throw new EntityNotFoundException("Refresh token was not found");
+        }
+
+        refreshTokenRepository.deleteByToken(token);
+    }
+
+    @Override
+    public RefreshToken findToken(String token) {
+        return refreshTokenRepository.findByToken(token)
+                .orElseThrow(() -> new EntityNotFoundException("Invalid refresh token"));
+    }
+
+    private UserDetails validateToken(String token, String secret) {
         String username = Jwts.parserBuilder()
-                .setSigningKey(getSignedKey(jwtConfig.getAccessSecret()))
+                .setSigningKey(getSignedKey(secret))
                 .build()
                 .parseClaimsJws(token)
                 .getBody()
