@@ -63,6 +63,14 @@ public class Event {
     )
     private Set<Tag> tags = new HashSet<>();
 
+    @ManyToMany
+    @JoinTable(
+            name = "event_registrations",
+            joinColumns = @JoinColumn(name = "event_id"),
+            inverseJoinColumns = @JoinColumn(name = "user_id")
+    )
+    private Set<User> participants = new HashSet<>();
+
     @Column(name = "created_at", nullable = false, updatable = false)
     @CreationTimestamp
     private LocalDateTime createdAt;
