@@ -10,11 +10,14 @@ import com.deg00se.events.mappers.UserMapper;
 import com.deg00se.events.services.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 
@@ -64,6 +67,24 @@ public class UserController {
         return ResponseEntity.ok(userResponse);
     }
 
-//    @PatchMapping("{id}/avatar")
-//    @PatchMapping("{id}/avatar")
+    @PatchMapping("me/avatar")
+    public ResponseEntity<UserResponse> updateUserAvatar(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestParam("file") MultipartFile file
+    ) throws IOException {
+        User user = userService.updateUserAvatar(userDetails.getUsername(), file);
+        UserResponse userResponse = userMapper.toResponse(user);
+
+        return ResponseEntity.ok(userResponse);
+    }
+
+    @DeleteMapping("me/avatar")
+    public ResponseEntity<UserResponse> deleteUserAvatar(
+            @AuthenticationPrincipal UserDetails userDetails
+    ) throws IOException {
+        User user = userService.deleteUserAvatar(userDetails.getUsername());
+        UserResponse userResponse = userMapper.toResponse(user);
+
+        return ResponseEntity.ok(userResponse);
+    }
 }
