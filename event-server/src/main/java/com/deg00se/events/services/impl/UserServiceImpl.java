@@ -3,8 +3,8 @@ package com.deg00se.events.services.impl;
 import com.deg00se.events.domain.entities.Event;
 import com.deg00se.events.domain.entities.User;
 import com.deg00se.events.domain.enums.StorageType;
+import com.deg00se.events.repositories.EventRepository;
 import com.deg00se.events.repositories.UserRepository;
-import com.deg00se.events.services.EventService;
 import com.deg00se.events.services.FileService;
 import com.deg00se.events.services.UserService;
 import jakarta.persistence.EntityNotFoundException;
@@ -21,7 +21,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
-    private final EventService eventService;
+    private final EventRepository eventRepository;
     private final FileService fileService;
 
     @Override
@@ -79,8 +79,8 @@ public class UserServiceImpl implements UserService {
 
         if (role != null && !role.isBlank()) {
             List<Event> events = switch (role) {
-                case "creator" -> eventService.getUserCreatedEvents(userId);
-                case "participant" -> eventService.getUserParticipatingEvent(userId);
+                case "creator" -> eventRepository.findAllByCreator_UserId(userId);
+                case "participant" -> eventRepository.findAllByParticipants_UserId(userId);
                 default -> List.of();
             };
 

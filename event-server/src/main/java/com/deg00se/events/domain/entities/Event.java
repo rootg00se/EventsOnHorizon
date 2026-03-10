@@ -32,9 +32,6 @@ public class Event {
     @Column(nullable = false, columnDefinition = "text")
     private String description;
 
-    @Column(name = "banner_key")
-    private String bannerKey;
-
     @Column(columnDefinition = "text", nullable = false)
     private String address;
 
@@ -46,7 +43,7 @@ public class Event {
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
-    private EventStatus status;
+    private EventStatus status = EventStatus.NOT_STARTED;
 
     @Column(name = "allowedCount", nullable = false)
     private Integer allowedCount;
@@ -78,4 +75,12 @@ public class Event {
     @Column(name = "updated_at", nullable = false)
     @UpdateTimestamp
     private LocalDateTime updatedAt;
+
+    public void addParticipant(User user) {
+        participants.add(user);
+    }
+
+    public void removeParticipant(User user) {
+        participants.remove(user);
+    }
 }
